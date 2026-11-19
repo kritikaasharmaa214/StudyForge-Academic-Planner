@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE TABLE IF NOT EXISTS sessions (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+ task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
  minutes INTEGER NOT NULL CHECK(minutes BETWEEN 1 AND 1440),
  focus_score INTEGER NOT NULL CHECK(focus_score BETWEEN 1 AND 5),
  studied_on TEXT NOT NULL,
@@ -61,10 +62,21 @@ def connect():
     finally:
         db.close()
 
+
 def initialize():
     os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     with connect() as db:
         db.executescript(SCHEMA)
+        columns = {
+            row['name']
+            for row in db.execute('PRAGMA table_info(sessions)')
+        }
+        if 'task_id' not in columns:
+            db.execute(
+                'ALTER TABLE sessions ADD COLUMN '
+                'task_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL'
+            )
+
 
 def rows(query, params=()):
     with connect() as db:
